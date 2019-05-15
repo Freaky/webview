@@ -1407,19 +1407,27 @@ WEBVIEW_API int webview_eval(struct webview *w, const char *js) {
   static const char *epilogue = ";})();";
   int n = strlen(prologue) + strlen(epilogue) + strlen(js) + 1;
   char *eval = (char *)malloc(n);
+  if (eval == NULL) {
+    return -1;
+  }
   snprintf(eval, n, "%s%s%s", prologue, js, epilogue);
   wchar_t *buf = webview_to_utf16(eval);
+  free(eval);
   if (buf == NULL) {
     return -1;
   }
   arg.bstrVal = SysAllocString(buf);
+  GlobalFree(buf);
+  if (arg.bstrVal == NULL) {
+    return -1;
+  }
   if (scriptDispatch->lpVtbl->Invoke(
           scriptDispatch, dispid, iid_unref(&IID_NULL), 0, DISPATCH_METHOD,
           &params, &result, &excepInfo, &nArgErr) != S_OK) {
+    SysFreeString(arg.bstrVal);
     return -1;
   }
   SysFreeString(arg.bstrVal);
-  free(eval);
   scriptDispatch->lpVtbl->Release(scriptDispatch);
   htmlDoc2->lpVtbl->Release(htmlDoc2);
   docDispatch->lpVtbl->Release(docDispatch);
