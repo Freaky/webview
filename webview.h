@@ -1618,9 +1618,11 @@ WEBVIEW_API void webview_dialog(struct webview *w,
       goto error_result;
     }
     s = webview_from_utf16(ws);
-    strncpy(result, s, resultsz);
-    result[resultsz - 1] = '\0';
     CoTaskMemFree(ws);
+    if (!s) goto error_result;
+    strncpy(result, s, resultsz);
+    GlobalFree(s);
+    result[resultsz - 1] = '\0';
   error_result:
     res->lpVtbl->Release(res);
   error_dlg:
