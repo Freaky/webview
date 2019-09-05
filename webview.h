@@ -533,6 +533,16 @@ typedef struct {
 #define iid_unref(x) (x)
 #endif
 
+static inline BSTR *webview_to_bstr(const char *s) {
+  DWORD size = MultiByteToWideChar(CP_UTF8, 0, s, -1, 0, 0);
+  BSTR *bs = SysAllocStringLen(0, size);
+  if (bs == NULL) {
+    return NULL;
+  }
+  MultiByteToWideChar(CP_UTF8, 0, s, -1, bs, size);
+  return bs;
+}
+
 static inline WCHAR *webview_to_utf16(const char *s) {
   DWORD size = MultiByteToWideChar(CP_UTF8, 0, s, -1, 0, 0);
   WCHAR *ws = (WCHAR *)GlobalAlloc(GMEM_FIXED, sizeof(WCHAR) * size);
@@ -1125,14 +1135,7 @@ static int DisplayHTMLPage(struct webview *w) {
     VariantInit(&myURL);
     myURL.vt = VT_BSTR;
 #ifndef UNICODE
-    {
-      wchar_t *buffer = webview_to_utf16(webPageName);
-      if (buffer == NULL) {
-        goto badalloc;
-      }
-      myURL.bstrVal = SysAllocString(buffer);
-      GlobalFree(buffer);
-    }
+    myURL.bstrVal = webview_to_bstr(webPageName);
 #else
     myURL.bstrVal = SysAllocString(webPageName);
 #endif
@@ -1166,14 +1169,7 @@ static int DisplayHTMLPage(struct webview *w) {
           if (!SafeArrayAccessData(sfArray, (void **)&pVar)) {
             pVar->vt = VT_BSTR;
 #ifndef UNICODE
-            {
-              wchar_t *buffer = webview_to_utf16(url);
-              if (buffer == NULL) {
-                goto release;
-              }
-              bstr = SysAllocString(buffer);
-              GlobalFree(buffer);
-            }
+            bstr = webview_to_bstr(url);
 #else
             bstr = SysAllocString(string);
 #endif
@@ -1409,13 +1405,8 @@ WEBVIEW_API int webview_eval(struct webview *w, const char *js) {
     return -1;
   }
   snprintf(eval, n, "%s%s%s", prologue, js, epilogue);
-  wchar_t *buf = webview_to_utf16(eval);
+  arg.bstrVal = webview_to_bstr(eval);
   free(eval);
-  if (buf == NULL) {
-    return -1;
-  }
-  arg.bstrVal = SysAllocString(buf);
-  GlobalFree(buf);
   if (arg.bstrVal == NULL) {
     return -1;
   }
